@@ -34,38 +34,91 @@ class FakeTaskRepository:
         del self.tasks[task.id]
 
 
-def test_service_coordinates_crud_completion_and_filter():
-    service = TaskService(FakeTaskRepository())
+@pytest.fixture()
+def repository():
+    return FakeTaskRepository()
+
+
+@pytest.fixture()
+def service(repository):
+    return TaskService(repository)
+
+
+def test_service_creates_task(service):
+    task = service.create("Nova tarefa")
+
+    assert task.title == "Nova tarefa"
+    assert task.status == TaskStatus.PENDING
+
+
+def test_service_lists_tasks(service):
+    service.create("Primeira")
+    service.create("Segunda")
+
+    tasks = service.list()
+
+    assert [task.title for task in tasks] == ["Primeira", "Segunda"]
+
+
+def test_service_gets_task_by_id(service):
+    created = service.create("Consultar")
+
+    task = service.get_by_id(created.id)
+
+    assert task is created
+
+
+def test_service_updates_task(service):
+    task = service.create("Antes")
+
+    updated = service.update(task.id, {"title": "Depois"})
+
+    assert updated.title == "Depois"
+
+
+def test_service_marks_task_as_completed(service):
+    task = service.create("Concluir")
+
+    completed = service.update(task.id, {"status": TaskStatus.COMPLETED})
+
+    assert completed.status == TaskStatus.COMPLETED
+
+
+def test_service_filters_tasks_by_status(service):
     pending = service.create("Pendente")
     completed = service.create("Concluida")
-
     service.update(completed.id, {"status": TaskStatus.COMPLETED})
 
-    assert service.get_by_id(pending.id).title == "Pendente"
-    assert service.list(TaskStatus.COMPLETED) == [completed]
+    tasks = service.list(TaskStatus.COMPLETED)
 
-    service.update(pending.id, {"title": "Atualizada"})
-    assert service.get_by_id(pending.id).title == "Atualizada"
+    assert tasks == [completed]
+    assert tasks != [pending]
 
-    service.delete(pending.id)
+
+def test_service_deletes_task(service):
+    task = service.create("Excluir")
+
+    service.delete(task.id)
+
     with pytest.raises(TaskNotFoundError):
-        service.get_by_id(pending.id)
+        service.get_by_id(task.id)
 
 
-def test_service_raises_domain_error_for_missing_task():
-    service = TaskService(FakeTaskRepository())
+def test_service_raises_domain_error_for_missing_task(service):
+    with pytest.raises(TaskNotFoundError):
+        service.get_by_id(999)
 
     with pytest.raises(TaskNotFoundError):
         service.update(999, {"status": TaskStatus.COMPLETED})
+
     with pytest.raises(TaskNotFoundError):
         service.delete(999)
 
-
-def test_service_accepts_optional_priority_advisor():
+def test_service_accepts_optional_priority_advisor(repository):
     class FakeAdvisor:
         def suggest_priority(self, _):
             return TaskPriority.HIGH
 
-    service = TaskService(FakeTaskRepository(), priority_advisor=FakeAdvisor())
+    service = TaskService(repository, priority_advisor=FakeAdvisor())
 
     assert service.suggest_priority("Qualquer tarefa") == TaskPriority.HIGH
