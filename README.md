@@ -1,48 +1,100 @@
 # Micro-API de Gerenciamento de Tarefas
 
-API REST para criar, consultar, atualizar, concluir, filtrar e excluir tarefas. O MVP usa SQLite para persistir os dados e funciona sem chave ou serviço de IA.
+## Visão geral
+
+API RESTful em Python/FastAPI para gerenciamento de tarefas (To-Do List). O núcleo usa Pydantic para validação, SQLAlchemy para persistência e SQLite em arquivo como banco padrão do MVP.
+
+A API principal funciona sem internet, chave de API ou provedor de IA.
 
 ## Objetivo
 
-Entregar uma Micro-API de Gerenciamento de Tarefas pequena, testável e persistente, com um contrato REST adequado ao desenvolvimento do MVP.
+Oferecer um MVP pequeno, testável e documentado para criar, listar, consultar, atualizar, concluir, filtrar e excluir tarefas, preservando os dados após o reinício da aplicação.
 
-## Requisitos obrigatórios atendidos
+## Funcionalidades implementadas
 
-- criar tarefas;
-- listar tarefas;
-- consultar uma tarefa por ID;
-- atualizar tarefas;
-- excluir tarefas;
-- marcar tarefas como concluídas por atualização do status;
-- filtrar tarefas por status;
-- persistir dados em banco SQLite;
-- validar payloads e retornar erros HTTP coerentes;
-- testar as operações principais, incluindo persistência e recursos inexistentes.
+- criação de tarefas pendentes;
+- listagem de tarefas;
+- consulta por ID;
+- atualização parcial de título e status;
+- exclusão de tarefas;
+- conclusão por `status: "completed"`;
+- filtro por `pending` ou `completed`;
+- persistência em SQLite em arquivo;
+- validação de payloads com Pydantic;
+- respostas `404` para recursos inexistentes e `422` para entradas inválidas;
+- health check em `/health`;
+- documentação OpenAPI automática em `/docs`;
+- `TaskService` separado da camada HTTP;
+- `TaskRepository` separado da camada de persistência;
+- `PriorityAdvisor` opcional com heurística local e fallback.
 
-## Funcionalidades
+Não existe endpoint HTTP de prioridade. O `PriorityAdvisor` é um componente interno opcional e não altera o CRUD.
 
-- CRUD de tarefas;
-- conclusão por atualização do campo `status`;
-- filtro por status (`pending` ou `completed`);
-- persistência relacional em SQLite;
-- documentação interativa gerada pelo FastAPI em `/docs`.
+## Arquitetura
 
-## Stack
+O fluxo principal é:
+
+```text
+Cliente HTTP
+  -> FastAPI/router (app/routes.py)
+  -> schemas Pydantic (app/schemas.py)
+  -> TaskService (app/services/task_service.py)
+  -> TaskRepository (app/repositories/tasks.py)
+  -> SQLAlchemy/session (app/db.py)
+  -> SQLite em arquivo
+```
+
+- `app/main.py`: cria a aplicação, registra rotas e inicializa as tabelas.
+- `app/routes.py`: define endpoints, injeta dependências e converte erros de domínio em HTTP.
+- `app/schemas.py`: valida entrada e serializa saída.
+- `app/services/task_service.py`: coordena os casos de uso sem depender do protocolo HTTP.
+- `app/repositories/tasks.py`: executa operações SQLAlchemy de tarefas.
+- `app/models.py`: define `Task` e `TaskStatus`.
+- `app/db.py`: configura engine, sessões e criação das tabelas.
+- `app/services/priority_advisor.py`: sugere prioridade sem ser requisito do CRUD.
+
+O diagrama detalhado está em [docs/arquitetura.md](docs/arquitetura.md).
+
+## Estrutura relevante
+
+```text
+app/
+  db.py
+  main.py
+  models.py
+  schemas.py
+  repositories/
+    __init__.py
+    tasks.py
+  services/
+    __init__.py
+    task_service.py
+    priority_advisor.py
+tests/
+  conftest.py
+  test_tasks.py
+  test_task_routes.py
+  test_repository.py
+  test_task_service.py
+  test_priority_advisor.py
+docs/
+  escopo-mvp.md
+  backlog.md
+  arquitetura.md
+```
+
+## Requisitos e pré-requisitos
 
 - Python 3.11 ou superior;
-- FastAPI e Uvicorn;
-- Pydantic;
-- SQLAlchemy 2;
-- SQLite;
-- pytest.
+- PowerShell no exemplo de comandos abaixo;
+- dependências listadas em `requirements.txt`;
+- SQLite, incluído no Python, para o banco padrão.
 
-O `PriorityAdvisor` é um componente opcional e separado do CRUD. Ele pode sugerir `low`, `medium` ou `high` por heurística local e aceitar um cliente LLM injetado; sem configuração, usa somente a heurística. A IA generativa também foi usada como apoio ao desenvolvimento, mas não é necessária em runtime.
+PostgreSQL não é necessário para o MVP. Pode ser adotado futuramente quando houver justificativa e um driver compatível.
 
-Quando habilitada, a integração externa usa `PRIORITY_LLM_API_KEY` e `PRIORITY_LLM_TIMEOUT_SECONDS`. Chaves não são armazenadas no código.
+## Instalação e ambiente virtual
 
-## Instalação
-
-No Windows PowerShell:
+No PowerShell, na raiz do projeto:
 
 ```powershell
 python -m venv .venv
@@ -50,40 +102,63 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Se a política do PowerShell impedir a ativação, execute os comandos usando diretamente `.venv\Scripts\python.exe`.
+O workspace também está configurado para usar `.venv\Scripts\python.exe`. Se a política do PowerShell impedir a ativação, use diretamente o executável do ambiente:
 
-## Configuração e banco
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-Por padrão, a API usa `sqlite:///./tasks.db`. A tabela `tasks` é criada na inicialização e o arquivo local é ignorado pelo Git. Para alterar o banco, defina `DATABASE_URL`:
+## Configuração e variáveis de ambiente
+
+A aplicação usa estas variáveis opcionais:
+
+| Variável | Padrão | Uso |
+| --- | --- | --- |
+| `DATABASE_URL` | `sqlite:///./tasks.db` | URL SQLAlchemy do banco. |
+| `PRIORITY_LLM_API_KEY` | não definida | Habilita o cliente LLM injetado no `PriorityAdvisor`; não é necessária para a API. |
+| `PRIORITY_LLM_TIMEOUT_SECONDS` | `2.0` | Limite de espera do cliente externo de prioridade. |
+
+Exemplo para escolher outro arquivo SQLite:
 
 ```powershell
 $env:DATABASE_URL = "sqlite:///./outro-banco.db"
 ```
 
-Não há credenciais hardcoded. PostgreSQL pode ser usado futuramente informando uma URL compatível e instalando o driver correspondente.
+Um modelo está disponível em [.env.example](.env.example). Não coloque chaves reais no código, no `.env.example` ou no Git. Arquivos `.env`, `.db` e `.sqlite3` são ignorados pelo [`.gitignore`](.gitignore).
+
+## Banco e persistência
+
+O padrão é SQLite em arquivo: `sqlite:///./tasks.db`. As tabelas são criadas na inicialização da aplicação e as sessões são fechadas após o uso. Os dados persistem após o encerramento e a nova inicialização quando o mesmo arquivo é utilizado.
+
+Testes usam banco SQLite temporário separado para evitar contaminar dados reais. SQLite em memória não é usado como persistência da aplicação.
 
 ## Execução
 
 ```powershell
-uvicorn app.main:app --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-A API ficará disponível em `http://127.0.0.1:8000`. A documentação OpenAPI está em `http://127.0.0.1:8000/docs`.
+A API ficará disponível em `http://127.0.0.1:8000`.
 
-## Endpoints
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| `POST` | `/tasks` | Cria uma tarefa pendente; retorna `201` |
-| `GET` | `/tasks` | Lista tarefas; retorna `200` |
-| `GET` | `/tasks/{task_id}` | Consulta uma tarefa; retorna `404` se ausente |
-| `PATCH` | `/tasks/{task_id}` | Atualiza título/status; retorna `200` |
-| `DELETE` | `/tasks/{task_id}` | Exclui uma tarefa; retorna `204` |
-| `GET` | `/health` | Verifica a disponibilidade da API e retorna `{"status":"ok"}` |
+## Endpoints principais
 
-O health check usa uma resposta estática de disponibilidade e não inclui timestamp; por isso, não há data/hora a formatar em ISO 8601.
+| Método | Rota | Sucesso | Descrição |
+| --- | --- | --- | --- |
+| `POST` | `/tasks` | `201` | Cria tarefa com status inicial `pending`. |
+| `GET` | `/tasks` | `200` | Lista tarefas. |
+| `GET` | `/tasks/{task_id}` | `200` | Consulta tarefa por ID. |
+| `PATCH` | `/tasks/{task_id}` | `200` | Atualiza `title`, `status` ou ambos. |
+| `DELETE` | `/tasks/{task_id}` | `204` | Exclui tarefa sem corpo de resposta. |
+| `GET` | `/health` | `200` | Retorna `{"status":"ok"}`. |
 
-Exemplo de criação:
+Recursos inexistentes retornam `404`. Payloads inválidos e status desconhecidos retornam `422`.
+
+### Exemplos
+
+Criar:
 
 ```json
 {
@@ -91,7 +166,7 @@ Exemplo de criação:
 }
 ```
 
-O status inicial é `pending`. Para concluir:
+Concluir:
 
 ```json
 {
@@ -99,53 +174,81 @@ O status inicial é `pending`. Para concluir:
 }
 ```
 
-Filtragem:
+Filtrar:
 
 ```text
 GET /tasks?status=pending
 GET /tasks?status=completed
 ```
 
-Títulos devem ter entre 1 e 200 caracteres. Payloads inválidos e status desconhecidos retornam `422`, conforme o FastAPI.
+Os únicos status aceitos são `pending` e `completed`. Títulos devem possuir entre 1 e 200 caracteres e não podem ser compostos somente por espaços.
 
 ## Testes
 
+A suíte usa pytest, `TestClient` e SQLite temporário. Não há chamadas de rede, API paga ou dependência de IA nos testes.
+
+Executar a suíte completa:
+
 ```powershell
-pytest
+.venv\Scripts\python.exe -m pytest -q
 ```
 
-Os testes cobrem criação, listagem, consulta por ID, atualização, conclusão, exclusão, filtro, recurso inexistente, payload inválido e persistência em banco temporário. Não usam internet nem API paga.
+Executar somente as rotas:
 
-## Estrutura
-
-```text
-app/
-  db.py       # engine, sessões e criação das tabelas
-  models.py   # modelo SQLAlchemy e enum de status
-  schemas.py  # entrada e saída Pydantic
-  repositories/
-    tasks.py   # operações de persistência de tarefas
-  services/
-    task_service.py # casos de uso e regras de negócio
-    priority_advisor.py # sugestão opcional de prioridade
-  routes.py   # endpoints HTTP
-  main.py     # aplicação FastAPI
- tests/
-  conftest.py
-  test_tasks.py
-  test_repository.py
+```powershell
+.venv\Scripts\python.exe -m pytest tests/test_task_routes.py -q
 ```
 
-## GenAI
+Executar somente o service:
 
-IA generativa foi usada como apoio no desenvolvimento e na revisão dos modelos, schemas, endpoints, testes, docstrings e desta documentação. Não existe integração de IA em runtime; portanto, a API principal não exige chave, fallback externo ou serviço adicional.
+```powershell
+.venv\Scripts\python.exe -m pytest tests/test_task_service.py -q
+```
 
-## Roadmap
+A cobertura inclui schemas, CRUD do repository, persistência entre sessões, casos de uso do service, rotas HTTP, status/conclusão, filtros, erros `404`/`422`, health check e `PriorityAdvisor`.
 
-Os itens abaixo são planejados e ainda não estão implementados:
+## Priorização opcional
 
-- autenticação e usuários;
-- paginação;
-- migrações formais com Alembic;
-- suporte de produção a PostgreSQL;
-- prioridade de tarefas.
+O `PriorityAdvisor` existe em [app/services/priority_advisor.py](app/services/priority_advisor.py), mas não é chamado pelas rotas CRUD e não é necessário para criar ou gerenciar tarefas.
+
+### Heurística local
+
+Sem um cliente LLM e sem chave configurada, o advisor classifica o texto localmente:
+
+- termos como `urgente`, `urgent`, `crítico` ou `critical`: `high`;
+- termos como `importante`, `prazo`, `deadline` ou `impacto alto`: `medium`;
+- demais textos: `low`.
+
+### LLM e fallback
+
+Um cliente externo pode ser injetado no advisor. Sua resposta é validada contra `low`, `medium` e `high`. Se a integração não estiver configurada, falhar, exceder o timeout ou retornar valor inválido, a heurística local é usada. A chave não é registrada em logs e o CRUD não é interrompido pela indisponibilidade da IA.
+
+## Segurança e secrets
+
+- não há credenciais hardcoded;
+- chaves devem vir de variáveis de ambiente;
+- API keys não devem ser commitadas ou impressas em logs;
+- `.env`, bancos locais e artefatos de teste estão no `.gitignore`;
+- o `PriorityAdvisor` é opcional e não cria dependência operacional da API externa.
+
+## Limitações atuais
+
+- não há autenticação ou múltiplos usuários;
+- não há paginação ou busca textual avançada;
+- não há prioridade persistida no modelo `Task`; o advisor apenas sugere um valor;
+- não há migrações formais com Alembic;
+- PostgreSQL não está configurado como dependência padrão;
+- o cliente LLM é uma dependência injetável, sem provider específico incluído;
+- a aplicação cria tabelas na inicialização, adequada ao MVP, mas sem estratégia de migração para produção.
+
+## Próximos passos e releases
+
+- **Core:** CRUD, conclusão, filtro, schemas Pydantic, SQLAlchemy + SQLite, testes centrais e health check.
+- **Qualidade:** ampliar testes de persistência e repository, isolamento, revisão de documentação e robustez.
+- **Entrega/estabilização:** automação, auditoria de configuração/secrets, demonstração e checklist de release.
+
+Autenticação, paginação, migrações, PostgreSQL de produção e integrações LLM específicas permanecem planejados ou fora do escopo do MVP. O backlog detalhado está em [docs/backlog.md](docs/backlog.md), e o escopo em [docs/escopo-mvp.md](docs/escopo-mvp.md).
+
+## GenAI no desenvolvimento
+
+IA generativa foi usada como apoio à criação e revisão de modelos, schemas, endpoints, testes, docstrings e documentação. Essa assistência não é requisito de runtime e a API principal permanece funcional sem internet ou provedor de IA.
