@@ -108,6 +108,31 @@ O workspace também está configurado para usar `.venv\Scripts\python.exe`. Se a
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+## Automação com Make
+
+O [Makefile](Makefile) oferece três targets:
+
+| Target | Comando |
+| --- | --- |
+| `install` | instala `requirements.txt` com `$(PYTHON)` |
+| `run` | executa `uvicorn app.main:app --reload` |
+| `test` | executa `pytest -q` |
+
+Com o ambiente virtual criado, execute:
+
+```text
+make install
+make test
+```
+
+O target `run` inicia um processo persistente; use-o em um terminal próprio e interrompa-o com `Ctrl+C` quando terminar. No Windows, `make` pode não estar disponível por padrão. Nesse caso, use os comandos equivalentes documentados neste README, por exemplo:
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
 ## Configuração e variáveis de ambiente
 
 A aplicação usa estas variáveis opcionais:
