@@ -23,8 +23,11 @@ class TaskRepository:
             statement = statement.where(Task.status == status_filter)
         return list(self.db.scalars(statement).all())
 
-    def get(self, task_id: int) -> Task | None:
+    def get_by_id(self, task_id: int) -> Task | None:
         return self.db.get(Task, task_id)
+
+    def get(self, task_id: int) -> Task | None:
+        return self.get_by_id(task_id)
 
     def update(self, task: Task, changes: dict[str, object]) -> Task:
         for field, value in changes.items():

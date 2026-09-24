@@ -1,7 +1,35 @@
+import pytest
+from pydantic import ValidationError
+
+from app.models import TaskStatus
+from app.schemas import TaskCreate, TaskOut, TaskUpdate
+
+
 def create_task(client, title="Estudar FastAPI"):
     response = client.post("/tasks", json={"title": title})
     assert response.status_code == 201
     return response.json()
+
+
+def test_task_create_and_update_schemas():
+    create = TaskCreate(title="Estudar Pydantic")
+    update = TaskUpdate(status=TaskStatus.COMPLETED)
+
+    assert create.title == "Estudar Pydantic"
+    assert update.status == TaskStatus.COMPLETED
+
+
+def test_task_schemas_reject_invalid_values():
+    with pytest.raises(ValidationError):
+        TaskCreate(title="   ")
+    with pytest.raises(ValidationError):
+        TaskUpdate()
+    with pytest.raises(ValidationError):
+        TaskUpdate(status="unknown")
+
+
+def test_task_out_is_configured_for_orm_objects():
+    assert TaskOut.model_config["from_attributes"] is True
 
 
 def test_health_check(client):
@@ -59,8 +87,10 @@ def test_delete_task(client):
 def test_not_found_and_invalid_payload(client):
     assert client.get("/tasks/999").status_code == 404
     assert client.patch("/tasks/999", json={"status": "completed"}).status_code == 404
+    assert client.delete("/tasks/999").status_code == 404
     assert client.post("/tasks", json={"title": ""}).status_code == 422
     assert client.post("/tasks", json={}).status_code == 422
+    assert client.patch("/tasks/1", json={}).status_code == 422
     assert client.get("/tasks?status=unknown").status_code == 422
 
 

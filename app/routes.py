@@ -4,54 +4,64 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Task, TaskStatus
 from app.repositories.tasks import TaskRepository
-from app.schemas import TaskCreate, TaskRead, TaskUpdate
+from app.schemas import TaskCreate, TaskOut, TaskUpdate
+from app.services.task_service import TaskNotFoundError, TaskService
 
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Task:
+def get_task_service(db: Session = Depends(get_db)) -> TaskService:
+    return TaskService(TaskRepository(db))
+
+
+@router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+def create_task(
+    payload: TaskCreate, service: TaskService = Depends(get_task_service)
+) -> Task:
     """Create a pending task."""
-    return TaskRepository(db).create(payload.title)
+    return service.create(payload.title)
 
 
-@router.get("", response_model=list[TaskRead])
+@router.get("", response_model=list[TaskOut])
 def list_tasks(
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
-    db: Session = Depends(get_db),
+    service: TaskService = Depends(get_task_service),
 ) -> list[Task]:
     """List tasks, optionally filtered by status."""
-    return TaskRepository(db).list(status_filter)
+    return service.list(status_filter)
 
 
-@router.get("/{task_id}", response_model=TaskRead)
-def get_task(task_id: int, db: Session = Depends(get_db)) -> Task:
+@router.get("/{task_id}", response_model=TaskOut)
+def get_task(
+    task_id: int, service: TaskService = Depends(get_task_service)
+) -> Task:
     """Return a task by ID."""
-    task = TaskRepository(db).get(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    try:
+        return service.get_by_id(task_id)
+    except TaskNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Task not found") from error
 
 
-@router.patch("/{task_id}", response_model=TaskRead)
+@router.patch("/{task_id}", response_model=TaskOut)
 def update_task(
-    task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
+    task_id: int,
+    payload: TaskUpdate,
+    service: TaskService = Depends(get_task_service),
 ) -> Task:
     """Update a task title, status, or both."""
-    repository = TaskRepository(db)
-    task = repository.get(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    return repository.update(task, payload.model_dump(exclude_unset=True))
+    try:
+        return service.update(task_id, payload.model_dump(exclude_unset=True))
+    except TaskNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Task not found") from error
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, db: Session = Depends(get_db)) -> None:
+def delete_task(
+    task_id: int, service: TaskService = Depends(get_task_service)
+) -> None:
     """Delete a task by ID."""
-    repository = TaskRepository(db)
-    task = repository.get(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    repository.delete(task)
+    try:
+        service.delete(task_id)
+    except TaskNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Task not found") from error

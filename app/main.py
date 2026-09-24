@@ -7,8 +7,9 @@ from app.routes import router as tasks_router
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    create_tables()
+async def lifespan(application: FastAPI):
+    if not application.dependency_overrides:
+        create_tables()
     yield
 
 

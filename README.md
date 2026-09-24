@@ -36,7 +36,9 @@ Entregar uma Micro-API de Gerenciamento de Tarefas pequena, testável e persiste
 - SQLite;
 - pytest.
 
-Não há integração de IA em runtime. A IA generativa foi usada somente como apoio ao desenvolvimento.
+O `PriorityAdvisor` é um componente opcional e separado do CRUD. Ele pode sugerir `low`, `medium` ou `high` por heurística local e aceitar um cliente LLM injetado; sem configuração, usa somente a heurística. A IA generativa também foi usada como apoio ao desenvolvimento, mas não é necessária em runtime.
+
+Quando habilitada, a integração externa usa `PRIORITY_LLM_API_KEY` e `PRIORITY_LLM_TIMEOUT_SECONDS`. Chaves não são armazenadas no código.
 
 ## Instalação
 
@@ -123,11 +125,15 @@ app/
   schemas.py  # entrada e saída Pydantic
   repositories/
     tasks.py   # operações de persistência de tarefas
+  services/
+    task_service.py # casos de uso e regras de negócio
+    priority_advisor.py # sugestão opcional de prioridade
   routes.py   # endpoints HTTP
   main.py     # aplicação FastAPI
  tests/
   conftest.py
   test_tasks.py
+  test_repository.py
 ```
 
 ## GenAI

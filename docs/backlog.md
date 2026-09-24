@@ -92,7 +92,7 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 
 ## Release 2 — Qualidade
 
-### [ ] QUAL-001 — Teste de persistência entre reinicializações
+### [x] QUAL-001 — Teste de persistência entre reinicializações
 
 - **Release:** Qualidade
 - **Descrição:** fortalecer o teste de persistência usando novas sessões ou nova instância da aplicação após a gravação.
@@ -100,9 +100,9 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 - **Prioridade:** Must
 - **Dependências:** CORE-002 e CORE-008.
 - **Critério de aceite:** uma tarefa criada antes do encerramento continua sendo encontrada depois de abrir nova sessão/cliente usando o mesmo banco SQLite.
-- **Status inicial:** A fazer
+- **Status inicial:** Concluído
 
-### [ ] QUAL-002 — Isolamento do banco nos testes
+### [x] QUAL-002 — Isolamento do banco nos testes
 
 - **Release:** Qualidade
 - **Descrição:** evitar que o lifespan dos testes crie ou utilize o banco padrão `tasks.db` quando a fixture usa banco temporário.
@@ -110,9 +110,9 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 - **Prioridade:** Must
 - **Dependências:** CORE-002 e CORE-008.
 - **Critério de aceite:** os testes usam apenas banco temporário configurado pela fixture e não geram dados no banco padrão do projeto.
-- **Status inicial:** A fazer
+- **Status inicial:** Concluído
 
-### [ ] QUAL-003 — Testes diretos do repositório
+### [x] QUAL-003 — Testes diretos do repositório
 
 - **Release:** Qualidade
 - **Descrição:** adicionar testes isolados para criação, consulta, atualização, filtro e exclusão no `TaskRepository`.
@@ -120,7 +120,7 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 - **Prioridade:** Should
 - **Dependências:** CORE-002 e CORE-008.
 - **Critério de aceite:** cada operação de persistência principal é verificada com banco temporário, sem depender de HTTP.
-- **Status inicial:** A fazer
+- **Status inicial:** Concluído
 
 ### [ ] QUAL-004 — Revisão de documentação e docstrings
 
