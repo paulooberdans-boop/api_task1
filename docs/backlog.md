@@ -80,7 +80,7 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 - **Critério de aceite:** o endpoint retorna `200` e `{"status":"ok"}` sem depender de IA ou de serviço externo.
 - **Status inicial:** Concluído
 
-### [ ] CORE-008 — Suíte mínima do núcleo
+### [x] CORE-008 — Suíte mínima do núcleo
 
 - **Release:** Core
 - **Descrição:** manter testes automatizados dos comportamentos centrais do CRUD, conclusão, filtro, validações, erros e persistência.
@@ -88,7 +88,7 @@ Este backlog organiza a entrega incremental sem adiar requisitos obrigatórios. 
 - **Prioridade:** Must
 - **Dependências:** CORE-001 a CORE-007; ambiente Python funcional.
 - **Critério de aceite:** `pytest` executa sem internet e cobre criação, listagem, consulta por ID, atualização, exclusão, conclusão, filtro, `404`, `422` e persistência.
-- **Status inicial:** Em andamento; os testes existem, mas o ambiente atual não localiza `pytest`.
+- **Status inicial:** Concluído; a suíte executa sem internet no ambiente virtual do projeto.
 
 ## Release 2 — Qualidade
 

@@ -68,6 +68,7 @@ class PriorityAdvisor:
         return TaskPriority.LOW
 
     def _call_llm(self, text: str) -> object:
+        """Wait up to the configured limit; a running thread cannot be force-stopped."""
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(self.llm_client, text)
         try:
