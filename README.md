@@ -133,6 +133,33 @@ O target `run` inicia um processo persistente; use-o em um terminal próprio e i
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
+## Validação local
+
+Para reproduzir uma validação limpa no Windows PowerShell:
+
+```powershell
+if (Test-Path .venv) { Remove-Item .venv -Recurse -Force }
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pytest -q
+```
+
+A suíte atual deve terminar com `29 passed`. Para um smoke test real, inicie a API em outro terminal:
+
+```powershell
+$env:DATABASE_URL = "sqlite:///./smoke_tasks.db"
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8004
+```
+
+Em seguida, valide disponibilidade e o ciclo mínimo de uma tarefa:
+
+```powershell
+Invoke-WebRequest -Uri http://127.0.0.1:8004/health -UseBasicParsing
+$task = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8004/tasks -ContentType "application/json" -Body '{"title":"Smoke test descartavel"}'
+Invoke-RestMethod -Method Delete -Uri "http://127.0.0.1:8004/tasks/$($task.id)"
+Remove-Item smoke_tasks.db -Force
+```
+
 ## Configuração e variáveis de ambiente
 
 A aplicação usa estas variáveis opcionais:
