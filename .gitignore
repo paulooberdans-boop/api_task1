@@ -13,3 +13,4 @@ dist/
 *.tmp
 *.sqlite3
 *.db
+.vscode/
